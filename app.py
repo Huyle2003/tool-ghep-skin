@@ -3,13 +3,16 @@ from flask import send_from_directory
 import cv2
 import numpy as np
 import os
+import uuid
 
 app = Flask(__name__)
 
-UPLOAD = "uploads"
-SKIN = "skins"
-RATE = "rate"
-RESULT = "result"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+UPLOAD = os.path.join(BASE_DIR, "uploads")
+SKIN = os.path.join(BASE_DIR, "skins")
+RATE = os.path.join(BASE_DIR, "rate")
+RESULT = os.path.join(BASE_DIR, "result")
 
 for f in [UPLOAD, SKIN, RATE, RESULT]:
     os.makedirs(f, exist_ok=True)
@@ -33,7 +36,9 @@ def upload_bg():
 
     file = request.files["file"]
 
-    path = os.path.join(UPLOAD, file.filename)
+    filename = str(uuid.uuid4()) + ".png"
+
+    path = os.path.join(UPLOAD, filename)
 
     file.save(path)
 
@@ -50,11 +55,16 @@ def upload_rate():
 
     file = request.files["file"]
 
-    path = os.path.join(UPLOAD, file.filename)
+    filename = str(uuid.uuid4()) + ".png"
+
+    path = os.path.join(UPLOAD, filename)
 
     file.save(path)
 
     img = cv2.imread(path)
+
+    if img is None:
+        return "Không đọc được ảnh"
 
     left = 239
     top = 155
@@ -82,7 +92,9 @@ def upload_shop():
 
     for f in files:
 
-        path = os.path.join(UPLOAD, f.filename)
+        filename = str(uuid.uuid4()) + ".png"
+
+        path = os.path.join(UPLOAD, filename)
 
         f.save(path)
 
@@ -100,7 +112,13 @@ def cut_skin():
     global skins
     skins.clear()
 
-    template = cv2.imread("sohuu.png")
+    template_path = os.path.join(BASE_DIR, "sohuu.png")
+
+    template = cv2.imread(template_path)
+
+    if template is None:
+        return jsonify({"error": "Không tìm thấy sohuu.png"})
+
     th, tw = template.shape[:2]
 
     skin_width = 330
@@ -113,6 +131,9 @@ def cut_skin():
     for shop_path in shop_paths:
 
         img = cv2.imread(shop_path)
+
+        if img is None:
+            continue
 
         result = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
 
@@ -135,6 +156,9 @@ def cut_skin():
 
             check = img[top+skin_height-20:top+skin_height+140, x:x+skin_width]
 
+            if check.size == 0:
+                continue
+
             res = cv2.matchTemplate(check, template, cv2.TM_CCOEFF_NORMED)
 
             score = np.max(res)
@@ -143,7 +167,7 @@ def cut_skin():
 
                 crop = img[top:top+skin_height, x:x+skin_width]
 
-                name = f"skin_{np.random.randint(999999)}.png"
+                name = f"{uuid.uuid4()}.png"
 
                 path = os.path.join(SKIN, name)
 
@@ -159,31 +183,32 @@ def cut_skin():
 # =============================
 @app.route("/merge", methods=["POST"])
 def merge():
-    
 
-    global bg_path, skins
+    global bg_path
 
     if bg_path is None:
-        return "Chưa có background"
+        return jsonify({"error":"Chưa có background"})
+
+    skins = request.json["skins"]
 
     if len(skins) == 0:
-        return "Chưa có skin"
-    skins = request.json["skins"]
+        return jsonify({"error":"Chưa có skin"})
+
     bg = cv2.imread(bg_path)
+
+    if bg is None:
+        return jsonify({"error":"Không đọc được background"})
+
     bg = cv2.resize(bg,(2796,1290))
 
     rate_path = os.path.join(RATE,"rate.png")
 
     if not os.path.exists(rate_path):
-        return "Chưa có rate"
+        return jsonify({"error":"Chưa có rate"})
 
     rate = cv2.imread(rate_path)
 
-    rate = cv2.copyMakeBorder(
-        rate,5,5,5,5,
-        cv2.BORDER_CONSTANT,
-        value=[255,255,255]
-    )
+    rate = cv2.copyMakeBorder(rate,5,5,5,5,cv2.BORDER_CONSTANT,value=[255,255,255])
 
     bg[155:155+rate.shape[0],239:239+rate.shape[1]] = rate
 
@@ -212,13 +237,12 @@ def merge():
 
         skin = cv2.imread(path)
 
+        if skin is None:
+            continue
+
         skin = cv2.resize(skin,(new_w,new_h))
 
-        skin = cv2.copyMakeBorder(
-            skin,5,5,5,5,
-            cv2.BORDER_CONSTANT,
-            value=[255,255,255]
-        )
+        skin = cv2.copyMakeBorder(skin,5,5,5,5,cv2.BORDER_CONSTANT,value=[255,255,255])
 
         h, w = skin.shape[:2]
 
@@ -233,14 +257,14 @@ def merge():
     cv2.imwrite(save,bg)
 
     return jsonify({
-    "status":"success",
-    "image":"/result/final.png",
-    "download":"/download"
-})
+        "status":"success",
+        "image":"/result/final.png",
+        "download":"/download"
+    })
 
 
 # =============================
-# Download ảnh
+# Download
 # =============================
 @app.route("/download")
 def download():
@@ -253,23 +277,15 @@ def download():
     return "Chưa có ảnh"
 
 
-# =============================
-# Hiển thị ảnh skin
-# =============================
 @app.route("/skins/<filename>")
 def show_skin(filename):
-    return send_from_directory("skins", filename)
+    return send_from_directory(SKIN, filename)
 
 
-# =============================
-# Hiển thị ảnh result
-# =============================
 @app.route("/result/<filename>")
 def show_result(filename):
-    return send_from_directory("result", filename)
-    
-# =============================
-# Run server
-# =============================
+    return send_from_directory(RESULT, filename)
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000)
