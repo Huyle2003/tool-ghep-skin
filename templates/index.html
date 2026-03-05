@@ -195,23 +195,40 @@ document.getElementById("ratePreview").src = URL.createObjectURL(f)
 /* =========================
 Upload Shop
 ========================= */
-
 document.getElementById("shop").onchange = async function(){
 
 let form = new FormData()
 let preview = document.getElementById("shopPreview")
-
 preview.innerHTML=""
 
 for(let f of this.files){
-
 form.append("files",f)
+}
+
+console.log("Uploading shop...")
+
+let r = await fetch("/upload_shop",{
+method:"POST",
+body:form
+})
+
+let data = await r.json()
+
+console.log("Upload shop:",data)
+
+shopPaths = data.paths || []
+
+/* preview sau khi upload xong */
+
+for(let f of this.files){
 
 let img = document.createElement("img")
 img.src = URL.createObjectURL(f)
 img.className="skin"
 
 preview.appendChild(img)
+
+}
 
 }
 
@@ -244,7 +261,7 @@ if(shopPaths.length === 0){
 alert("Chưa upload ảnh shop")
 return
 }
-
+preview.innerHTML="Đang upload..."
 let r = await fetch("/cut_skin",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
