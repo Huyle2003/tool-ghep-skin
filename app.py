@@ -1,3 +1,4 @@
+from tempfile import template
 from flask import Flask, render_template, request, send_file, jsonify
 from flask import send_from_directory
 import cv2
@@ -141,7 +142,7 @@ def cut_skin():
 
         result = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
 
-        loc = np.where(result >= 0.85)
+        loc = np.where(result >= 0.75)
 
         points = list(zip(loc[1], loc[0]))
 
@@ -178,6 +179,9 @@ def cut_skin():
                 cv2.imwrite(path, crop)
 
                 skins.append(name)
+    print("Shop paths:", shop_paths)
+    print("Template shape:", template.shape)
+    print("Points:", len(points))
 
     return jsonify({"skins": skins})
 
