@@ -178,8 +178,6 @@ def cut_skin():
                 cv2.imwrite(path, crop)
 
                 skins.append(name)
-    success = cv2.imwrite(path, img)
-    print("Saved:", success)
 
     return jsonify({"skins": skins})
 
