@@ -129,6 +129,28 @@ img{
 
 <div class="box">
 
+<div class="box">
+
+<label style="font-size:18px;">
+<input type="checkbox" id="ruong_cs">
+Ảnh rương chung sức
+</label>
+
+<br><br>
+
+<label style="font-size:18px;">
+Giấy tuyệt sắc:
+</label>
+
+<input 
+type="number" 
+id="giay_ts" 
+placeholder="Nhập số lượng"
+style="padding:6px;font-size:16px;width:120px"
+>
+
+<br><br>
+
 <button onclick="merge()">Ghép Ảnh</button>
 
 <br><br>
@@ -313,16 +335,27 @@ async function merge(){
 let skins = []
 
 document.querySelectorAll("#skinList .skin-box").forEach(box=>{
-skins.push(box.dataset.name)
+    skins.push(box.dataset.name)
 })
 
+let ruong = document.getElementById("ruong_cs").checked
+let giay = document.getElementById("giay_ts").value
 let r = await fetch("/merge",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({skins:skins})
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+        skins:skins,
+        ruong_cs:ruong,
+        giay_ts:giay
+    })
 })
 
 let data = await r.json()
+
+if(data.error){
+    alert(data.error)
+    return
+}
 
 document.getElementById("result").src = data.image + "?" + Date.now()
 
@@ -330,7 +363,6 @@ document.getElementById("download").innerHTML =
 `<a href="${data.download}">
 <button>Tải ảnh xuống</button>
 </a>`
-
 }
 let dragItem = null
 

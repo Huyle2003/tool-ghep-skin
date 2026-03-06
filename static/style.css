@@ -79,3 +79,14 @@ object-fit:cover;
     cursor:pointer;
     font-weight:bold;
 }
+.preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 5px;              /* khoảng cách giữa các ảnh */
+    background: white;     /* màu của gap */
+    padding: 5px;          /* viền ngoài */
+}
+
+.preview-grid img {
+    display: block;
+}
